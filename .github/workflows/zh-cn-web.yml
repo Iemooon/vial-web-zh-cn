@@ -53,11 +53,19 @@ jobs:
         } > build/_headers
         ls -l build
         # The Chinese interface is only usable if the CJK face actually made it
-        # into the preloaded filesystem, so verify the artifact instead of
-        # assuming: an OTF starts with the bytes OTTO, and the file name is
-        # stored in the image's directory table.
-        echo "font blobs in .data: $(grep -ac OTTO build/*.data || true)"
-        grep -ao 'NotoSansSC[A-Za-z.]*' build/*.data | head -3 || true
+        # into the preloaded filesystem.  Check the bytes directly -- an earlier
+        # version of this step used `grep -ao 'NotoSansSC[A-Za-z.]*'` on a binary
+        # blob, and unbounded regex over 17 MB of data is not something to leave
+        # in a build.
+        python3 - <<'PY'
+        import glob
+        data = open(glob.glob("build/*.data")[0], "rb").read()
+        print("data bytes:", len(data))
+        print("OTTO blobs:", data.count(b"OTTO"))
+        print("font name hits:", data.count(b"NotoSansSC-Regular.otf"))
+        assert data.count(b"NotoSansSC-Regular.otf") > 0, "font missing from .data"
+        assert data.count("键位".encode()) > 0, "translation missing from .data"
+        PY
 
     - uses: actions/upload-artifact@v4
       with:
