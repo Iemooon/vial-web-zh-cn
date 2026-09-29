@@ -1,0 +1,62 @@
+name: zh-cn Web
+
+# Manual trigger only: pushing to this repo never starts a build.
+# Two options at "Run workflow":
+#   deploy  - also push the build to the gh-pages branch (publishes the site)
+on:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Deploy to GitHub Pages (gh-pages branch)"
+        type: boolean
+        default: false
+
+jobs:
+  build-web:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build
+      run: |
+        set -e
+        # The only difference from upstream: the GUI comes from the zh-cn branch
+        # of the localized fork, so the WASM build ships the Chinese interface.
+        git clone -b zh-cn https://github.com/Iemooon/vial-gui-zh-cn.git vial-gui
+        git clone https://github.com/vial-kb/via-keymap-precompiled.git
+        ./fetch-emsdk.sh
+        ./fetch-deps.sh
+        ./build-deps.sh
+        cd src
+        ./build.sh
+        # Qt/Python here are built with -pthread, so the page needs a
+        # cross-origin-isolated context for SharedArrayBuffer.  GitHub Pages
+        # reads this file; any other host must send the same two headers.
+        {
+          echo '/*'
+          echo '  Cross-Origin-Opener-Policy: same-origin'
+          echo '  Cross-Origin-Embedder-Policy: require-corp'
+        } > build/_headers
+        ls -l build
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: vial-web-zh-cn
+        path: src/build
+
+    - name: Deploy to GitHub Pages
+      if: ${{ inputs.deploy }}
+      run: |
+        set -e
+        cd src/build
+        git init -b gh-pages
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+        git add -A
+        git commit -m "zh-cn web build (${GITHUB_SHA:0:8})"
+        git push --force origin gh-pages:gh-pages
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
