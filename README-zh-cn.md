@@ -34,9 +34,19 @@ git clone https://github.com/vial-kb/via-keymap-precompiled.git
 cd src && ./build.sh
 ```
 
-Output is `src/build/`: `index.html`, `main-<UNIQVER>.js`, `main-<UNIQVER>.wasm`,
-`main-<UNIQVER>.worker.js`, `icon.png`. `<UNIQVER>` is the sha256 of the three commit ids, so
-the file names change whenever any input changes -- that is also the cache-busting scheme.
+Output is `src/build/`, six files, about 33 MB (verified on run 36539630046):
+
+| file | size | what it is |
+|---|---|---|
+| `index.html` | 9 KB | the page shell; boots the module and does the WebHID handshake |
+| `main-<UNIQVER>.js` | 347 KB | Emscripten loader |
+| `main-<UNIQVER>.wasm` | 23.4 MB | CPython + Qt5 + PyQt5 + this app's C glue |
+| `main-<UNIQVER>.data` | 9.3 MB | preloaded filesystem: all of `vial-gui/src/main/python`, the `i18n/` package included, plus `qmk_settings.json` / `build_settings.json` |
+| `main-<UNIQVER>.worker.js` | 3.8 KB | pthread worker + the `vialglue` ↔ WebHID bridge |
+| `icon.png` | 24 KB | favicon |
+
+`<UNIQVER>` is the sha256 of the three commit ids, so the names change whenever any input
+changes -- that is the cache-busting scheme, and it means all files must be deployed together.
 
 ## Deploy
 
@@ -56,14 +66,17 @@ The output is a plain static site, no server side involved, but two things are m
 Browser support: Chrome / Chromium / Edge. Firefox and Safari have no WebHID, and the page
 detects that and says so.
 
-Local test run:
+Local test run -- `python -m http.server` is **not** enough, it cannot send the two headers:
 
 ```sh
-python -m http.server            # then open http://localhost:8000  -- headers still required
+python tools/serve.py src/build 8000      # then open http://localhost:8000/  in Chrome/Edge
 ```
 
 For GitHub Pages: enable Pages for the repository and point it at the `gh-pages` branch, or run
 the workflow with the `deploy` checkbox ticked, which force-pushes the build there.
+
+Nothing is fetched from the network at run time: the only URLs inside `index.html` and the loader
+are documentation links shown in an error message. The whole app is those six files.
 
 ## Caveats worth checking first
 
