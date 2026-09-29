@@ -19,13 +19,25 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    # CPython and Qt5 are compiled from source below, so a mistake here would
+    # otherwise only surface after ~45 minutes.  Check the inputs first.
+    - name: Check inputs
+      run: |
+        set -e
+        test -f fonts/NotoSansSC-Regular.otf
+        test -f src/build.sh
+        grep -q 'usr/local/fonts' src/build.sh
+        git clone --depth 1 -b zh-cn https://github.com/Iemooon/vial-gui-zh-cn.git vial-gui
+        git clone --depth 1 https://github.com/vial-kb/via-keymap-precompiled.git
+        test -f vial-gui/src/main/python/i18n/zh_cn.py
+        test -f vial-gui/src/main/python/webmain.py
+        grep -q 'ensure_cjk_font' vial-gui/src/main/python/i18n/__init__.py
+        echo "vial-gui @ $(git -C vial-gui rev-parse HEAD)"
+        echo "vial-web @ $(git rev-parse HEAD)"
+
     - name: Build
       run: |
         set -e
-        # The only difference from upstream: the GUI comes from the zh-cn branch
-        # of the localized fork, so the WASM build ships the Chinese interface.
-        git clone -b zh-cn https://github.com/Iemooon/vial-gui-zh-cn.git vial-gui
-        git clone https://github.com/vial-kb/via-keymap-precompiled.git
         ./fetch-emsdk.sh
         ./fetch-deps.sh
         ./build-deps.sh
@@ -41,9 +53,11 @@ jobs:
         } > build/_headers
         ls -l build
         # The Chinese interface is only usable if the CJK face actually made it
-        # into the preloaded filesystem, so check the artifact rather than assume.
-        echo "font blobs in .data: $(grep -ac OTTO build/*.data)"
-        grep -ao 'NotoSansSC[A-Za-z.]*' build/*.data | sort -u | head -3
+        # into the preloaded filesystem, so verify the artifact instead of
+        # assuming: an OTF starts with the bytes OTTO, and the file name is
+        # stored in the image's directory table.
+        echo "font blobs in .data: $(grep -ac OTTO build/*.data || true)"
+        grep -ao 'NotoSansSC[A-Za-z.]*' build/*.data | head -3 || true
 
     - uses: actions/upload-artifact@v4
       with:

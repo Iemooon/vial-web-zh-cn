@@ -26,7 +26,7 @@ cp ../simpleeval.py usr/local/lib/python3.11
 # a face of its own: this lands in the .data image and is registered at startup
 # by i18n.ensure_cjk_font().  See fonts/README.md for provenance and licence.
 mkdir -p usr/local/fonts
-cp ../fonts/*.otf usr/local/fonts/
+cp ../../fonts/*.otf usr/local/fonts/
 emcc \
     --preload-file="./usr/local" \
     -I ../../deps/cpython/Include/ \
