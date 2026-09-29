@@ -98,6 +98,21 @@ python tools/serve.py src/build 8000      # then open http://localhost:8000/  in
 For GitHub Pages: enable Pages for the repository and point it at the `gh-pages` branch, or run
 the workflow with the `deploy` checkbox ticked, which force-pushes the build there.
 
+### Checking a build without plugging a keyboard in
+
+`tools/render-harness.py <artifact-dir> [theme]` writes `render-test.html` next to the artifact:
+same runtime, but the WebHID step is replaced by "no devices found", so the real window comes up
+and can be screenshotted.  Any Python error is painted into a message box instead of vanishing
+into a console nobody reads.  This is how the Qt5 `QActionGroup` import bug (which blanked the
+whole app) was found.
+
+```sh
+python tools/render-harness.py src/build Light
+python tools/serve.py src/build 8000
+# open http://localhost:8000/render-test.html
+```
+
+
 Nothing is fetched from the network at run time: the only URLs inside `index.html` and the loader
 are documentation links shown in an error message. The whole app is those six files.
 
