@@ -22,6 +22,11 @@ cp ../../vial-gui/src/main/resources/base/qmk_settings.json usr/local
 cp ../../vial-gui/src/build/settings/base.json usr/local/build_settings.json
 cp -r ../../vial-gui/src/main/python/* usr/local/lib/python3.11
 cp ../simpleeval.py usr/local/lib/python3.11
+# Qt compiled to WASM cannot see any system font, so the Chinese interface needs
+# a face of its own: this lands in the .data image and is registered at startup
+# by i18n.ensure_cjk_font().  See fonts/README.md for provenance and licence.
+mkdir -p usr/local/fonts
+cp ../fonts/*.otf usr/local/fonts/
 emcc \
     --preload-file="./usr/local" \
     -I ../../deps/cpython/Include/ \
@@ -31,7 +36,7 @@ emcc \
     ../../deps/cpython/builddir/emscripten-browser/Modules/_decimal/libmpdec/libmpdec.a \
     ../../deps/cpython/builddir/emscripten-browser/Modules/expat/libexpat.a  \
     -sALLOW_MEMORY_GROWTH \
-    -sTOTAL_MEMORY=20971520 \
+    -sTOTAL_MEMORY=67108864 \
     -sFORCE_FILESYSTEM \
     -sTEXTDECODER=0 \
     -lidbfs.js \

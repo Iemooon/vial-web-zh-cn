@@ -40,6 +40,10 @@ jobs:
           echo '  Cross-Origin-Embedder-Policy: require-corp'
         } > build/_headers
         ls -l build
+        # The Chinese interface is only usable if the CJK face actually made it
+        # into the preloaded filesystem, so check the artifact rather than assume.
+        echo "font blobs in .data: $(grep -ac OTTO build/*.data)"
+        grep -ao 'NotoSansSC[A-Za-z.]*' build/*.data | sort -u | head -3
 
     - uses: actions/upload-artifact@v4
       with:

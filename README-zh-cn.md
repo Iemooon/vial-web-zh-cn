@@ -9,19 +9,42 @@ lives on branch `zh-cn`.
 
 ## What is actually changed vs upstream
 
-One line. The build job clones the localized GUI instead of the upstream one:
+Four things, all in the packaging layer plus one line of CI:
 
-```sh
-git clone -b zh-cn https://github.com/Iemooon/vial-gui-zh-cn.git vial-gui   # was: vial-kb/vial-gui
+1. **`.github/workflows/zh-cn-web.yml`** replaces upstream's `main.yml` (which ran on every
+   push).  It runs only on `workflow_dispatch` and clones the localized GUI:
+
+   ```sh
+   git clone -b zh-cn https://github.com/Iemooon/vial-gui-zh-cn.git vial-gui   # was: vial-kb/vial-gui
+   ```
+
+   `src/build.sh` copies `vial-gui/src/main/python/*` into the preloaded filesystem, so the
+   `i18n/` package travels with it and `webmain.py` on the `zh-cn` branch installs the
+   translator before the window is built.
+2. **`fonts/NotoSansSC-Regular.otf`** (see `fonts/README.md`) and two lines in `src/build.sh`
+   that put it into `usr/local/fonts/`.  Qt in the browser cannot see system fonts, so the
+   Chinese text would come out as boxes without it; `i18n.ensure_cjk_font()` registers it at
+   startup and leaves desktop builds untouched.
+3. **`src/index.html`** passes a `?theme=` URL parameter into `webmain.main()`.
+4. **`-sTOTAL_MEMORY`** raised from 20 MB to 64 MB, because the preloaded filesystem now
+   carries a font as well.
+
+## Theme
+
+Upstream hides the Theme menu in the web build (`main_window.py`: `if sys.platform !=
+"emscripten"`), but the palettes in `themes.py` are pure Python and work fine under WASM, so
+`webmain.py` puts the menu back: 主题 → 跟随系统 / 浅色 / 深色.
+
+The menu changes the palette for the current session.  A choice does **not** survive a reload
+(the WASM filesystem is recreated every time, so `QSettings` cannot persist), which is what the
+URL parameter is for:
+
+```
+http://localhost:8000/?theme=light
 ```
 
-`src/build.sh` copies `vial-gui/src/main/python/*` into the preloaded filesystem, so the
-`i18n/` package travels along with it, and `webmain.py` on the `zh-cn` branch installs the
-translator before the window is built. Nothing else in the packaging layer needs to know
-that a translation exists.
+`theme=light`, `theme=dark`, `theme=system`.  Bookmark the URL to keep the choice.
 
-The `.github/workflows/main.yml` of upstream (auto-run on every push) is replaced by
-`.github/workflows/zh-cn-web.yml`, which runs only on `workflow_dispatch`.
 
 ## Build
 
@@ -78,11 +101,14 @@ the workflow with the `deploy` checkbox ticked, which force-pushes the build the
 Nothing is fetched from the network at run time: the only URLs inside `index.html` and the loader
 are documentation links shown in an error message. The whole app is those six files.
 
-## Caveats worth checking first
+## Caveats
 
-* **Chinese glyph rendering has never been exercised by the upstream web build** (its UI is
-  English-only). If the Chinese labels come out as boxes, the WASM Qt font database has no CJK
-  face available; the fix is to put a CJK font into the preloaded filesystem and register it
-  with `QFont.addApplicationFont()` from `i18n.install()`.
+* **Chinese glyph rendering** needed a bundled font, which is what `fonts/` is for.  It is
+  registered by `i18n.ensure_cjk_font()`; if the labels ever come out as boxes again, check
+  that `usr/local/fonts/NotoSansSC-Regular.otf` is inside the `.data` file (the CI prints this).
 * The page shell itself (`Start Vial`, the unlock prompt, error messages) is plain HTML in
   `src/index.html` and is not covered by the Python translation layer.
+* Upstream's own workaround for the missing font is still active: non-ASCII **key labels** in
+  the keycode tray are replaced by their `KC_...` names under Emscripten
+  (`keycodes.py`).  That is upstream behaviour, not something this fork changes.
+

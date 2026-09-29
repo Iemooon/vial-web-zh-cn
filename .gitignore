@@ -4,3 +4,4 @@ deps
 build
 vial-gui
 via-keymap-precompiled
+tmp_artifact/ 

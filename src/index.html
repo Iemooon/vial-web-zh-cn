@@ -237,7 +237,12 @@ body {
         _vialglue_set_device_desc(allocateUTF8(JSON.stringify(device_desc)));
 
         btn.value = "Starting up....";
-        PThread.runningWorkers[0].postMessage({cmd: "py", payload: "import webmain;webmain.main(qtApp)"});
+        // ?theme=light|dark|system is how a theme choice survives a reload:
+        // QSettings inside the WASM filesystem is thrown away on every load.
+        // Non-letters are dropped so the value cannot break out of the Python
+        // string literal built below.
+        var theme = (new URLSearchParams(window.location.search).get("theme") || "").replace(/[^A-Za-z]/g, "");
+        PThread.runningWorkers[0].postMessage({cmd: "py", payload: "import webmain;webmain.main(qtApp" + (theme ? ",'" + theme + "'" : "") + ")"});
 
         g_animation = setInterval(update_animation, 500);
         g_animation_counter = 0;
