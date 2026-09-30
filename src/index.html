@@ -204,19 +204,32 @@ body {
         btn.disabled = true;
         btn.value = "Requesting device list...";
         devices = await navigator.hid.requestDevice({filters: [{usagePage: 0xFF60, usage: 0x61}]});
+        // ?pick=N chooses among several granted devices.  Upstream only ever
+        // accepts exactly one, so a desk with two Vial receivers plugged in
+        // cannot connect at all -- the button just goes back.
+        var pick = parseInt(new URLSearchParams(window.location.search).get("pick"), 10);
+        if (devices.length > 1 && !isNaN(pick)) {
+            if (pick >= 0 && pick < devices.length) {
+                devices = [devices[pick]];
+            } else {
+                btn.value = "?pick=" + pick + " 超出范围，共 " + devices.length + " 个设备";
+                btn.disabled = false;
+                return;
+            }
+        }
         if (devices.length != 1) {
             // Upstream silently goes back to "Start Vial" here, which reads as
             // "the page can't see my keyboard" when the real cause is two
             // granted devices (or none).  Say what actually happened.
-            var names = devices.map(function (d) {
-                return (d.productName || "(unnamed)") + " [" +
+            var names = devices.map(function (d, i) {
+                return i + ": " + (d.productName || "(unnamed)") + " [" +
                        d.vendorId.toString(16) + ":" + d.productId.toString(16) + "]";
             }).join("、");
             if (devices.length == 0) {
                 btn.value = "没有可选设备：请确认键盘已插好，并在弹窗里勾选那个 Vial 设备";
             } else {
                 btn.value = "当前选中 " + devices.length + " 个设备（" + names +
-                            "）；一次只能连一个，请到 chrome://settings/content/hid 撤销后重试";
+                            "）；用 ?pick=0 或 ?pick=1 指定其中一个，或到 chrome://settings/content/hid 撤销";
             }
             btn.disabled = false;
             return;
