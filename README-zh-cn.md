@@ -43,7 +43,22 @@ URL parameter is for:
 http://localhost:8000/?theme=light
 ```
 
-`theme=light`, `theme=dark`, `theme=system`.  Bookmark the URL to keep the choice.
+`theme=light`, `theme=dark`, `theme=system` (case-insensitive).  Bookmark the URL to keep the choice.
+
+### Two keyboards on one desk
+
+Upstream's `connect()` accepts **exactly one** device: `if (devices.length != 1) { go back }`.
+With two Vial receivers plugged in -- or two still granted from an earlier session -- the button
+simply returns to "Start Vial" and looks like the page cannot see the keyboard.  This fork reports
+what it found instead, and `?pick=N` chooses one of them:
+
+```
+http://localhost:8000/?pick=0&theme=light
+```
+
+The device list is numbered in the message the button shows, and `chrome://settings/content/hid`
+is where stale grants get removed.
+
 
 
 ## Build
